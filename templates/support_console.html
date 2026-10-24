@@ -1,0 +1,657 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FinBridge | Support Console</title>
+  <style>
+    .incident-link {
+  background: none;
+  border: none;
+  color: #1d4ed8;
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  margin: 0;
+  padding: 0;
+}
+
+.incident-link:hover {
+  color: #1e40af;
+}
+
+.panel[hidden] {
+  display: none;
+}
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f3f6fb;
+      color: #172337;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    header {
+      background: #10243d;
+      color: white;
+      padding: 22px 6%;
+    }
+
+    header h1 { margin: 0; font-size: 25px; }
+    header p { margin: 6px 0 0; opacity: .75; }
+
+    main { max-width: 1250px; margin: 32px auto; padding: 0 20px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card, .panel {
+      background: white;
+      border: 1px solid #e3e8ef;
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .card small { color: #64748b; }
+    .card strong {
+      display: block;
+      font-size: 32px;
+      margin-top: 8px;
+    }
+
+    .panel { margin-bottom: 20px; }
+    .panel h2 { margin-top: 0; font-size: 19px; }
+
+    button, .button {
+      padding: 10px 16px;
+      border: 0;
+      border-radius: 7px;
+      background: #1d4ed8;
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      text-decoration: none;
+      display: inline-block;
+      margin: 5px 8px 5px 0;
+    }
+
+    button:disabled { opacity: .5; cursor: wait; }
+    .button { background: #334155; }
+
+    .table-wrap { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5eaf0;
+      font-size: 13px;
+    }
+
+    th { color: #64748b; font-weight: 600; }
+
+    .healthy, .resolved { color: #15803d; font-weight: 700; }
+    .open, .action_required, .error { color: #b91c1c; font-weight: 700; }
+
+    #message { color: #475569; font-size: 14px; }
+
+.case-editor {
+  border-top: 1px solid #e5eaf0;
+  margin-top: 28px;
+  padding-top: 24px;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit, minmax(220px, 1fr)
+  );
+  gap: 16px;
+}
+
+#caseForm label {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+}
+
+#caseForm input,
+#caseForm select,
+#caseForm textarea {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  margin-top: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: white;
+  color: #172337;
+  font: inherit;
+}
+
+#caseForm textarea {
+  resize: vertical;
+}
+
+#caseMessage {
+  color: #334155;
+  font-size: 14px;
+}
+
+#caseUpdated {
+  color: #64748b;
+}
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>FinBridge</h1>
+    <p>Bank Connectivity & API Reliability | Support Engineer Console</p>
+  </header>
+
+  <main>
+    <section class="stats">
+      <div class="card">
+        <small>Total Incidents</small>
+        <strong id="total">—</strong>
+      </div>
+      <div class="card">
+        <small>Open Incidents</small>
+        <strong id="open">—</strong>
+      </div>
+      <div class="card">
+        <small>Resolved Incidents</small>
+        <strong id="resolved">—</strong>
+      </div>
+      <div class="card">
+        <small>Recent Diagnostic Checks</small>
+        <strong id="checks">—</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Connection Health</h2>
+      <p>Last recorded status:
+        <strong id="health">Loading...</strong>
+      </p>
+      <p id="message"></p>
+      <button id="checkButton">Run Health Check</button>
+      <button id="refreshButton">Refresh Dashboard</button>
+      <a class="button" href="/">Repair Connection</a>
+    </section>
+
+    <section class="panel">
+      <h2>Support Incidents</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Incident</th>
+              <th>Institution</th>
+              <th>Error Code</th>
+              <th>Failed Checks</th>
+              <th>Status</th>
+              <th>First Detected</th>
+            </tr>
+          </thead>
+          <tbody id="incidents"></tbody>
+        </table>
+      </div>
+    </section>
+
+<section class="panel" id="incidentDetail" hidden>
+  <h2 id="incidentTitle">Incident Details</h2>
+
+  <p id="incidentSummary"></p>
+
+  <button id="closeIncident" type="button">
+    Close Details
+  </button>
+
+  <h3>Investigation Timeline</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Timestamp</th>
+          <th>Status</th>
+          <th>Error Code</th>
+          <th>Request ID</th>
+        </tr>
+      </thead>
+
+      <tbody id="incidentTimeline"></tbody>
+    </table>
+  </div>
+
+<div class="case-editor">
+  <h3>Case Management</h3>
+  <p>Document the investigation and resolution.</p>
+
+  <form id="caseForm">
+    <div class="case-grid">
+
+      <label>
+        Severity
+        <select id="caseSeverity">
+          <option value="P1">P1 — Critical</option>
+          <option value="P2">P2 — High</option>
+          <option value="P3">P3 — Medium</option>
+          <option value="P4">P4 — Low</option>
+        </select>
+      </label>
+
+      <label>
+        Assigned Engineer
+        <input id="caseOwner" type="text"
+               maxlength="100"
+               placeholder="e.g. Support Engineering">
+      </label>
+
+    </div>
+
+    <label>
+      Investigation Notes
+      <textarea id="caseNotes" rows="4"
+                maxlength="5000"></textarea>
+    </label>
+
+    <label>
+      Root Cause
+      <textarea id="caseRootCause" rows="3"
+                maxlength="2000"></textarea>
+    </label>
+
+    <label>
+      Resolution Summary
+      <textarea id="caseResolution" rows="3"
+                maxlength="2000"></textarea>
+    </label>
+
+    <button id="saveCaseButton" type="submit">
+      Save Case
+    </button>
+
+    <p id="caseMessage" role="status"></p>
+    <small id="caseUpdated"></small>
+  </form>
+</div>
+
+</section>
+
+    <section class="panel">
+      <h2>Recent Diagnostic Events</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Event ID</th>
+              <th>Timestamp</th>
+              <th>Connection Status</th>
+              <th>Error Code</th>
+              <th>Request ID</th>
+            </tr>
+          </thead>
+          <tbody id="events"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const element = id => document.getElementById(id);
+
+    async function getJSON(path) {
+      const response = await fetch(path, { cache: "no-store" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${data.error_code || "Request failed"}`);
+      }
+      return data;
+    }
+
+    function localTime(value) {
+      return value ? new Date(value).toLocaleString() : "—";
+    }
+
+    
+    // 1. Add a row to a table
+    function addRow(body, values) {
+      const row = document.createElement("tr");
+
+      values.forEach(value => {
+        const cell = document.createElement("td");
+        cell.textContent = value ?? "—";
+        row.appendChild(cell);
+      });
+
+      body.appendChild(row);
+    }
+
+
+    // 2. Load and display incident details
+    async function showIncident(incidentId) {
+      console.log("Loading incident:", incidentId);
+
+      try {
+        const data = await getJSON(
+          `/api/incidents/${encodeURIComponent(incidentId)}`
+        );
+
+        const incident = data.incident;
+
+        element("incidentTitle").textContent =
+          `Incident ${incident.incident_id}`;
+
+        element("incidentSummary").textContent =
+          `${incident.institution} | ${incident.error_code} | ` +
+          `${incident.status} | ${incident.failure_checks} failed checks`;
+
+        // Populate the investigation timeline
+        const timelineBody = element("incidentTimeline");
+        timelineBody.replaceChildren();
+
+        for (const event of data.timeline) {
+          addRow(timelineBody, [
+            event.id,
+            localTime(event.checked_at),
+            event.connection_status,
+            event.error_code,
+            event.request_id
+          ]);
+        }
+
+        // Display the details panel
+        element("incidentDetail").hidden = false;
+
+        element("incidentDetail").scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+      } catch (error) {
+        console.error("Incident details error:", error);
+
+        element("message").textContent =
+          "Unable to load incident: " + error.message;
+      }
+    }
+
+
+    // 3. Close the incident details panel
+    element("closeIncident").addEventListener("click", () => {
+      element("incidentDetail").hidden = true;
+    });
+
+
+let activeIncidentId = null;
+
+// Load saved case information
+async function loadCase(incidentId) {
+  activeIncidentId = incidentId;
+
+  const saveButton = element("saveCaseButton");
+  saveButton.disabled = true;
+  element("caseMessage").textContent = "Loading case...";
+
+  try {
+    const data = await getJSON(
+      `/api/incidents/${encodeURIComponent(incidentId)}/case`
+    );
+
+    if (activeIncidentId !== incidentId) return;
+
+    element("caseSeverity").value = data.severity;
+    element("caseOwner").value = data.owner;
+    element("caseNotes").value = data.investigation_notes;
+    element("caseRootCause").value = data.root_cause;
+    element("caseResolution").value = data.resolution_summary;
+
+    element("caseUpdated").textContent = data.updated_at
+      ? `Last updated: ${localTime(data.updated_at)}`
+      : "Not saved yet";
+
+    element("caseMessage").textContent = "Case loaded.";
+
+  } catch (error) {
+    console.error("Case loading failed:", error);
+    element("caseMessage").textContent =
+      "Could not load case: " + error.message;
+  } finally {
+    if (activeIncidentId === incidentId) {
+      saveButton.disabled = false;
+    }
+  }
+}
+
+// Save edited case information
+element("caseForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!activeIncidentId) {
+    element("caseMessage").textContent =
+      "Select an incident first.";
+    return;
+  }
+
+  const button = element("saveCaseButton");
+  button.disabled = true;
+  element("caseMessage").textContent = "Saving case...";
+
+  const payload = {
+    severity: element("caseSeverity").value,
+    owner: element("caseOwner").value,
+    investigation_notes: element("caseNotes").value,
+    root_cause: element("caseRootCause").value,
+    resolution_summary: element("caseResolution").value
+  };
+
+  try {
+    const response = await fetch(
+      `/api/incidents/${encodeURIComponent(activeIncidentId)}/case`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result.error || `HTTP ${response.status}`
+      );
+    }
+
+    element("caseUpdated").textContent =
+      `Last updated: ${localTime(result.updated_at)}`;
+
+    element("caseMessage").textContent =
+      "Case saved successfully.";
+
+  } catch (error) {
+    console.error("Case save failed:", error);
+    element("caseMessage").textContent =
+      "Save failed: " + error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+
+
+    async function refreshDashboard() {
+      try {
+        const [incidentData, historyData] = await Promise.all([
+          getJSON("/api/reliability/incidents"),
+          getJSON("/api/diagnostics/history")
+        ]);
+
+        element("total").textContent = incidentData.total_incidents;
+        element("open").textContent = incidentData.open_incidents;
+        element("resolved").textContent =
+          incidentData.total_incidents - incidentData.open_incidents;
+        element("checks").textContent = historyData.total_returned;
+
+        const incidentBody = element("incidents");
+        incidentBody.replaceChildren();
+
+        
+
+for (const incident of incidentData.incidents) {
+  const row = document.createElement("tr");
+
+  const idCell = document.createElement("td");
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.className = "incident-link";
+  button.textContent = incident.incident_id;
+
+ 
+button.onclick = async function () {
+  console.log("Opening incident:", incident.incident_id);
+
+  try {
+    const data = await getJSON(
+      `/api/reliability/incidents/${encodeURIComponent(incident.incident_id)}`
+    );
+
+    const details = data.incident;
+
+    element("incidentTitle").textContent =
+      `Incident ${details.incident_id}`;
+
+    element("incidentSummary").textContent =
+      `${details.institution} | ${details.error_code} | ` +
+      `${details.status} | ${details.failure_checks} failed checks`;
+
+    const timeline = element("incidentTimeline");
+    timeline.replaceChildren();
+
+    for (const event of data.timeline) {
+      addRow(timeline, [
+        event.id,
+        localTime(event.checked_at),
+        event.connection_status,
+        event.error_code,
+        event.request_id
+      ]);
+    }
+
+    const panel = element("incidentDetail");
+    panel.hidden = false;
+
+    panel.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+    await loadCase(incident.incident_id);
+
+  } catch (error) {
+    console.error("Incident loading failed:", error);
+
+    element("message").textContent =
+      "Unable to load incident: " + error.message;
+  }
+};
+
+
+  idCell.appendChild(button);
+  row.appendChild(idCell);
+
+  const values = [
+    incident.institution,
+    incident.error_code,
+    incident.failure_checks,
+    incident.status,
+    localTime(incident.first_detected_at)
+  ];
+
+  for (const value of values) {
+    const cell = document.createElement("td");
+    cell.textContent = value ?? "—";
+    row.appendChild(cell);
+  }
+
+  incidentBody.appendChild(row);
+}
+
+
+
+        const eventBody = element("events");
+        eventBody.replaceChildren();
+
+        for (const event of historyData.events) {
+          addRow(eventBody, [
+            event.id,
+            localTime(event.checked_at),
+            event.connection_status,
+            event.error_code,
+            event.request_id
+          ]);
+        }
+
+        const latest = historyData.events[0];
+        const health = element("health");
+
+        health.textContent = latest
+          ? latest.connection_status
+          : "No diagnostic checks";
+
+        health.className = latest
+          ? latest.connection_status
+          : "";
+
+        element("message").textContent =
+          "Showing recorded diagnostic history. Run a health check for a fresh result.";
+
+      } catch (error) {
+        element("message").textContent =
+          "Dashboard error: " + error.message;
+      }
+    }
+
+    element("checkButton").addEventListener("click", async () => {
+      const button = element("checkButton");
+      button.disabled = true;
+      element("message").textContent = "Checking Plaid connection...";
+
+      try {
+        const result = await getJSON("/api/diagnostics/item");
+        await refreshDashboard();
+
+        element("message").textContent =
+          "Latest diagnosis: " + result.recommended_action;
+      } catch (error) {
+        element("message").textContent =
+          "Health check failed: " + error.message;
+        await refreshDashboard();
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    element("refreshButton").addEventListener(
+      "click", refreshDashboard
+    );
+
+    refreshDashboard();
+  </script>
+</body>
+</html>
